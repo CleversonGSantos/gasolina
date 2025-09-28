@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght300;400;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -43,6 +43,13 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .history-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .history-item:hover {
+            background-color: #e0f7fa; /* Light cyan */
+        }
     </style>
 </head>
 <body class="bg-[#F0F4F8]">
@@ -60,19 +67,72 @@
             <section class="bg-white rounded-lg shadow-lg p-6 md:p-8">
                 <h2 class="text-2xl font-bold text-[#005F73] mb-4 text-center">A Batalha das Variáveis: Câmbio, Commodity e Fiscal</h2>
                 <p class="text-center text-gray-600 mb-6 max-w-3xl mx-auto">
-                    Este gráfico de 45 anos mostra a complexa relação entre o preço internacional do petróleo (dólar, amarelo), a cotação do câmbio (dólar, verde) e o preço final da gasolina (azul). Os **Impostos (vermelho)** demonstram ser a variável mais controlável pelo governo, sendo a chave para a estabilização ou desestabilização do preço ao consumidor em momentos cruciais.
+                    Este gráfico de 45 anos mostra a complexa relação entre o preço internacional do petróleo (dólar, amarelo), a cotação do câmbio (dólar, verde) e o preço final da gasolina (azul).
                 </p>
                 <div class="chart-container">
                     <canvas id="trendsChart"></canvas>
                 </div>
             </section>
+
+            <!-- Seção do Simulador de Preços (Gemini API) + Histórico (Firestore) -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Coluna de Histórico de Simulações (Agora Público) -->
+                <div class="lg:col-span-1 bg-white rounded-lg shadow-xl p-6 md:p-8 border-l-4 border-[#0A9396] order-2 lg:order-1">
+                    <h2 class="text-xl font-bold text-[#005F73] mb-4 flex items-center">
+                        Simulações da Comunidade 🌎
+                    </h2>
+                    <div id="authStatus" class="text-sm text-gray-500 mb-4 italic">
+                        Carregando status de autenticação...
+                    </div>
+                    <div id="simulationsList" class="space-y-2 max-h-[500px] overflow-y-auto">
+                        <p class="text-center text-gray-400 py-4" id="noHistoryMessage">
+                            Nenhuma simulação salva ainda.
+                        </p>
+                        <!-- Simulações serão injetadas aqui -->
+                    </div>
+                </div>
+
+                <!-- Coluna do Simulador Principal -->
+                <div class="lg:col-span-2 bg-[#D8F0F8] rounded-lg shadow-xl p-6 md:p-8 border-l-4 border-[#005F73] order-1 lg:order-2">
+                    <h2 class="text-2xl font-bold text-[#005F73] mb-4 flex items-center">
+                        Simulador Gemini de Preço Futuro ✨
+                    </h2>
+                    <p class="text-gray-700 mb-6">
+                        Projete o preço da gasolina ao consumidor final (R$/Litro) inserindo seus próprios cenários. Seu cenário será salvo publicamente.
+                    </p>
+                    
+                    <div class="flex flex-col md:flex-row gap-4 mb-6 items-end">
+                        <div class="flex-1 w-full">
+                            <label for="dollarInput" class="block text-sm font-medium text-gray-700">Cotação Dólar (R$/US$)</label>
+                            <input type="number" step="0.01" id="dollarInput" value="5.35" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2.5" placeholder="Ex: 5.35">
+                        </div>
+                        <div class="flex-1 w-full">
+                            <label for="brentInput" class="block text-sm font-medium text-gray-700">Petróleo Brent (US$/Barril)</label>
+                            <input type="number" step="1" id="brentInput" value="69" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2.5" placeholder="Ex: 69">
+                        </div>
+                        <button id="simulateButton" onclick="simulatePrice()" class="w-full md:w-auto px-6 py-2.5 bg-[#0A9396] text-white font-bold rounded-lg hover:bg-[#005F73] transition duration-200 flex items-center justify-center">
+                            <span id="buttonText">Simular Preço Final ✨</span>
+                            <div id="loadingIndicator" class="loading-animation hidden ml-2"></div>
+                        </button>
+                    </div>
+
+                    <!-- Área de Resultados -->
+                    <div id="resultArea" class="mt-6 p-4 bg-white rounded-lg shadow-md border-l-4 border-gray-400 hidden">
+                        <p class="text-lg font-bold text-[#005F73] mb-2">Análise de Cenário:</p>
+                        <div id="geminiOutput" class="text-gray-700"></div>
+                        <div id="sources" class="text-xs text-gray-500 mt-4 italic"></div>
+                    </div>
+
+                </div>
+            </section>
             
-            <!-- Seção de KPIs (Mantida) -->
+            <!-- Outras Seções Mantidas (KPIs, Composição, Descolamentos) -->
             <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
                 <div class="bg-white rounded-lg shadow-lg p-6">
                     <h3 class="font-bold text-[#CA6702] text-lg">Pico Histórico Brent</h3>
                     <p class="kpi-value font-bold text-[#BB3E03]">$147</p>
-                    <p class="text-gray-600">Alcançado brevemente em 2008, refletindo-se na pressão dos custos.</p>
+                    <p class="text-gray-600">Alcançado brevemente em 2008.</p>
                 </div>
                 <div class="bg-white rounded-lg shadow-lg p-6">
                     <h3 class="font-bold text-[#CA6702] text-lg">Era do Câmbio Fixo</h3>
@@ -82,54 +142,20 @@
                 <div class="bg-white rounded-lg shadow-lg p-6">
                     <h3 class="font-bold text-[#CA6702] text-lg">Gasolina Mais Barata (Real)</h3>
                     <p class="kpi-value font-bold text-[#BB3E03]">R$ 1,05</p>
-                    <p class="text-gray-600">Preço ajustado em 1994 (Real), o menor em 45 anos.</p>
+                    <p class="text-gray-600">Preço ajustado em 1994, o menor em 45 anos.</p>
                 </div>
                  <div class="bg-white rounded-lg shadow-lg p-6">
                     <h3 class="font-bold text-[#CA6702] text-lg">Maior Carga Tributária</h3>
                     <p class="kpi-value font-bold text-[#BB3E03]">48%</p>
-                    <p class="text-gray-600">Percentual médio de impostos no preço final em anos sem desoneração.</p>
+                    <p class="text-gray-600">Percentual médio de impostos no preço final.</p>
                 </div>
-            </section>
-
-            <!-- Seção do Simulador de Preços (Gemini API) -->
-            <section class="bg-[#D8F0F8] rounded-lg shadow-xl p-6 md:p-8 border-l-4 border-[#005F73]">
-                <h2 class="text-2xl font-bold text-[#005F73] mb-4 flex items-center">
-                    Simulador Gemini de Preço Futuro ✨
-                </h2>
-                <p class="text-gray-700 mb-6">
-                    Projete o preço da gasolina ao consumidor final (R$/Litro) inserindo seus próprios cenários para o Dólar e o Petróleo Brent. O analista Gemini fará a estimativa e fornecerá a justificativa econômica.
-                </p>
-                
-                <div class="flex flex-col md:flex-row gap-4 mb-6 items-end">
-                    <div class="flex-1 w-full">
-                        <label for="dollarInput" class="block text-sm font-medium text-gray-700">Cotação Dólar (R$/US$)</label>
-                        <input type="number" step="0.01" id="dollarInput" value="5.20" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2.5" placeholder="Ex: 5.20">
-                    </div>
-                    <div class="flex-1 w-full">
-                        <label for="brentInput" class="block text-sm font-medium text-gray-700">Petróleo Brent (US$/Barril)</label>
-                        <input type="number" step="1" id="brentInput" value="95" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2.5" placeholder="Ex: 95">
-                    </div>
-                    <button id="simulateButton" onclick="simulatePrice()" class="w-full md:w-auto px-6 py-2.5 bg-[#0A9396] text-white font-bold rounded-lg hover:bg-[#005F73] transition duration-200 flex items-center justify-center">
-                        <span id="buttonText">Simular Preço Final ✨</span>
-                        <div id="loadingIndicator" class="loading-animation hidden ml-2"></div>
-                    </button>
-                </div>
-
-                <!-- Área de Resultados -->
-                <div id="resultArea" class="mt-6 p-4 bg-white rounded-lg shadow-md border-l-4 border-gray-400 hidden">
-                    <p class="text-lg font-bold text-[#005F73] mb-2">Análise de Cenário:</p>
-                    <div id="geminiOutput" class="text-gray-700"></div>
-                    <div id="sources" class="text-xs text-gray-500 mt-4 italic"></div>
-                </div>
-
             </section>
             
-            <!-- Seção de Composição e Fluxo (Mantida) -->
             <section class="grid grid-cols-1 md:grid-cols-5 gap-8 items-center">
                 <div class="md:col-span-3 bg-white rounded-lg shadow-lg p-6 md:p-8">
                     <h2 class="text-2xl font-bold text-[#005F73] mb-4">Composição Estrutural do Preço</h2>
                     <p class="text-gray-600 mb-6">
-                        A estrutura de custo não mudou drasticamente em 45 anos, sendo dominada por duas forças principais: o custo de insumo (Petrobras, Dólar e Etanol) e a intervenção estatal (Impostos).
+                        A estrutura de custo é dominada pelo insumo (Petrobras, Dólar e Etanol) e pela intervenção estatal (Impostos).
                     </p>
                     <div class="space-y-4">
                         <div class="flex items-center">
@@ -155,7 +181,7 @@
                         </div>
                          <div class="flex items-center">
                              <div class="w-8 h-8 rounded-full bg-[#BB3E03] flex items-center justify-center text-white font-bold mr-4">4</div>
-                            <span class="font-semibold text-gray-700 font-bold">Carga Tributária Total (Federais: PIS/Cofins, CIDE e Estadual: ICMS)</span>
+                            <span class="font-semibold text-gray-700 font-bold">Carga Tributária Total (41% Média)</span>
                         </div>
                          <div class="ml-4 pl-5 border-l-2 border-dashed border-[#94D2BD]">
                             <div class="text-4xl text-[#94D2BD] -ml-9 mt-1 mb-1">↓</div>
@@ -174,25 +200,24 @@
                 </div>
             </section>
             
-            <!-- Seção de Descolamentos Históricos (Mantida) -->
             <section>
                 <h2 class="text-2xl font-bold text-[#005F73] mb-6 text-center">Descolamentos Históricos (1980-2025)</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div class="bg-white rounded-lg shadow-lg p-6">
                         <h3 class="font-bold text-xl text-[#AE2012] mb-2">1980-1994: Controle e Crise</h3>
-                        <p class="text-gray-600">Durante as crises do petróleo e a hiperinflação, o preço da gasolina era determinado por decretos governamentais. A instabilidade do Dólar e a alta inflação (que não aparece linearmente no gráfico) geravam uma distorção constante, com subsídios mascarando o custo real.</p>
+                        <p class="text-gray-600">Preço determinado por decretos. Subsídios do governo mascaravam o custo real em um período de hiperinflação.</p>
                     </div>
                     <div class="bg-white rounded-lg shadow-lg p-6">
                         <h3 class="font-bold text-xl text-[#AE2012] mb-2">1994: Plano Real</h3>
-                        <p class="text-gray-600">A vinculação cambial ($1=R$1) estabilizou momentaneamente a gasolina a um preço baixo e estável. O preço na bomba se descola da inflação e das crises externas, mas esse controle cambial leva ao esgotamento em poucos anos.</p>
+                        <p class="text-gray-600">A vinculação cambial ($1=R$1) estabilizou a gasolina a um preço baixo, mas o controle cambial levou ao esgotamento em poucos anos.</p>
                     </div>
                     <div class="bg-white rounded-lg shadow-lg p-6">
                         <h3 class="font-bold text-xl text-[#AE2012] mb-2">2008: O Pico do Brent</h3>
-                        <p class="text-gray-600">O petróleo atingiu seu recorde de $147 o barril. No entanto, o preço da gasolina no Brasil foi segurado e o Dólar estava relativamente baixo (R$ 1,85), evitando que o preço final disparasse, graças a subsídios da Petrobras (descolamento por intervenção).</p>
+                        <p class="text-gray-600">Petróleo atingiu $147. O preço no Brasil foi segurado graças a subsídios da Petrobras e um Dólar baixo (R$ 1,85).</p>
                     </div>
                     <div class="bg-white rounded-lg shadow-lg p-6">
-                        <h3 class="font-bold text-xl text-[#AE2012] mb-2">2022: Guerra e Desoneração Fiscal</h3>
-                        <p class="text-gray-600">O maior exemplo do poder do imposto. Com o Brent acima de $100 e o Dólar alto, o preço ao consumidor despencou devido à intervenção fiscal (redução drástica do ICMS e PIS/Cofins - **linha vermelha caindo**), provando que o imposto é a alavanca mais forte.</p>
+                        <h3 class="font-bold text-xl text-[#AE2012] mb-2">2022: Guerra e Desoneração</h3>
+                        <p class="text-gray-600">Com Dólar e Brent altos, o preço despencou devido à intervenção fiscal (redução drástica de impostos), provando o poder da alavanca tributária.</p>
                     </div>
                 </div>
             </section>
@@ -200,33 +225,218 @@
         </main>
         
         <footer class="text-center mt-12 pt-8 border-t border-gray-300">
-            <p class="text-gray-500">Análise baseada em dados históricos (1980-2025). Valores de Gasolina e Impostos pré-1994 são ajustados ao Real de 2025 para fins de comparação. O Simulador Gemini utiliza o modelo gemini-2.5-flash-preview-05-20 com Google Search para grounding.</p>
+            <p class="text-gray-500">Análise baseada em dados históricos (1980-2025). O Simulador Gemini utiliza o modelo gemini-2.5-flash-preview-05-20 com Google Search para grounding e o Firebase Firestore para persistência de dados.</p>
         </footer>
 
     </div>
 
-    <script>
+    <script type="module">
+        // Importações do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variáveis Globais para Firebase
+        let app;
+        let db;
+        let auth;
+        let userId = 'default-user'; // Fallback
+        let appId = 'default-app-id';
+
+        // Constantes para caminhos do Firestore
+        const SIMULATIONS_COLLECTION = 'gas_simulations'; 
+
+        // FUNÇÃO DETERMINÍSTICA CORRIGIDA (V3): Calibrada para refletir a alta carga tributária "por dentro"
+        function calculateGasPrice(dollar, brent) {
+            // Constantes reais
+            const litersPerBarrel = 159;
+            const aggregateCostMultiplier = 2.67; 
+            // Multiplicador 2.67 é um proxy de calibração que absorve a margem de refino, etanol, 
+            // distribuição e a alta carga tributária (incluindo ICMS "por dentro") para replicar R$6.20 
+            // com as cotações atuais (Dólar R$5.35 e Brent $69).
+
+            // 1. Custo do Brent em Reais por Litro (Crude Cost)
+            const crudeCostPerLiter = (brent / litersPerBarrel) * dollar; 
+            
+            // 2. Preço Final (Custo do Crude * Fator Agregado)
+            const finalPrice = crudeCostPerLiter * aggregateCostMultiplier;
+
+            // Retorna o preço com duas casas decimais
+            return parseFloat(finalPrice.toFixed(2));
+        }
+
+        // Função de Inicialização do Firebase e Autenticação
+        async function initFirebase() {
+            try {
+                // 1. Configuração e Inicialização
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase config is missing.");
+                    return;
+                }
+                
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                const authStatusElement = document.getElementById('authStatus');
+                
+                // 2. Autenticação
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        authStatusElement.innerHTML = `Status: Autenticado. ID do Usuário: <span class="font-semibold">${userId.substring(0, 8)}...</span>`;
+                        loadSimulations();
+                    } else {
+                        const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                        
+                        if (token) {
+                            await signInWithCustomToken(auth, token);
+                        } else {
+                            const userCredential = await signInAnonymously(auth);
+                            userId = userCredential.user.uid;
+                            authStatusElement.innerHTML = `Status: Anônimo. ID do Usuário: <span class="font-semibold">${userId.substring(0, 8)}...</span>`;
+                            loadSimulations();
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Erro na inicialização ou autenticação do Firebase:", error);
+                document.getElementById('authStatus').textContent = 'Erro ao conectar ao banco de dados.';
+            }
+        }
+        
+        // Função para obter a referência da coleção pública (Compartilhada)
+        function getSimulationsCollectionRef() {
+            if (!db || !userId) {
+                console.error("Firestore ou User ID não está pronto.");
+                return null;
+            }
+            // Caminho PUBLICO: /artifacts/{appId}/public/data/gas_simulations
+            return collection(db, `artifacts/${appId}/public/data/${SIMULATIONS_COLLECTION}`);
+        }
+
+        // Função para carregar simulações em tempo real
+        function loadSimulations() {
+            const simulationsRef = getSimulationsCollectionRef();
+            const listElement = document.getElementById('simulationsList');
+            const noHistoryMessage = document.getElementById('noHistoryMessage');
+            
+            if (!simulationsRef) return;
+
+            // Ordena os resultados localmente após a busca (usando timestamp)
+            onSnapshot(simulationsRef, (snapshot) => {
+                const simulations = [];
+                snapshot.forEach(doc => {
+                    simulations.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Ordena os dados em memória (do mais recente para o mais antigo)
+                simulations.sort((a, b) => b.timestamp - a.timestamp);
+
+                listElement.innerHTML = '';
+                noHistoryMessage.classList.add('hidden');
+
+                if (simulations.length === 0) {
+                    noHistoryMessage.classList.remove('hidden');
+                    return;
+                }
+
+                simulations.forEach(sim => {
+                    const date = new Date(sim.timestamp).toLocaleDateString('pt-BR', {
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                    });
+                    
+                    const creatorDisplay = sim.creatorId ? sim.creatorId.substring(0, 8) + '...' : 'Anônimo';
+                    
+                    const listItem = document.createElement('div');
+                    listItem.className = 'history-item p-3 rounded-lg border border-gray-200 text-sm';
+                    listItem.innerHTML = `
+                        <div class="font-bold text-[#005F73]">R$${sim.dollar.toFixed(2)} | $${sim.brent}</div>
+                        <div class="text-gray-500">${date} - Criado por: <span class="font-semibold">${creatorDisplay}</span></div>
+                    `;
+                    listItem.onclick = () => displaySimulation(sim);
+                    listElement.appendChild(listItem);
+                });
+            }, (error) => {
+                console.error("Erro ao carregar simulações:", error);
+                listElement.innerHTML = `<p class="text-red-500">Erro ao carregar histórico.</p>`;
+            });
+        }
+
+        // Função para salvar a simulação no Firestore
+        async function saveSimulationData(dollar, brent, geminiText, sources) {
+            const simulationsRef = getSimulationsCollectionRef();
+            if (!simulationsRef) return;
+
+            try {
+                await addDoc(simulationsRef, {
+                    dollar: parseFloat(dollar),
+                    brent: parseInt(brent),
+                    geminiText: geminiText,
+                    sources: sources,
+                    timestamp: Date.now(),
+                    creatorId: userId 
+                });
+            } catch (error) {
+                console.error("Erro ao salvar simulação no Firestore:", error);
+            }
+        }
+
+        // Função para exibir uma simulação salva
+        function displaySimulation(simData) {
+            const resultArea = document.getElementById('resultArea');
+            const geminiOutput = document.getElementById('geminiOutput');
+            const sourcesDiv = document.getElementById('sources');
+
+            geminiOutput.innerHTML = simData.geminiText.replace(/\*\*(.*?)\*\*/g, '<span class="text-xl font-extrabold text-[#BB3E03]">$1</span>');
+            
+            if (simData.sources && simData.sources.length > 0) {
+                sourcesDiv.innerHTML = 'Fontes de Dados (para grounding): ' + simData.sources.map(s => `<a href="${s.uri}" target="_blank" class="underline hover:text-[#0A9396]">${s.title}</a>`).join(' | ');
+            } else {
+                sourcesDiv.innerHTML = '';
+            }
+
+            // Atualiza inputs para refletir o cenário carregado
+            document.getElementById('dollarInput').value = simData.dollar.toFixed(2);
+            document.getElementById('brentInput').value = simData.brent;
+
+            resultArea.classList.remove('hidden');
+        }
+
         // Função utilitária para lidar com o retry de chamadas de API
         async function exponentialBackoffFetch(url, options, maxRetries = 5, delay = 1000) {
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     const response = await fetch(url, options);
                     if (response.ok) return response;
-                    if (response.status === 429 && i < maxRetries - 1) { // 429: Too Many Requests
+
+                    if ((response.status === 429 || response.status === 401 || response.status >= 500) && i < maxRetries - 1) { 
+                        console.warn(`Tentativa ${i + 1} falhou com status ${response.status}. Tentando novamente em ${delay / 1000}s...`);
                         await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= 2; // Atraso exponencial
+                        delay *= 2; 
                     } else {
-                        throw new Error(`API returned status ${response.status}: ${response.statusText}`);
+                        const errorBody = await response.text();
+                        const errorDetails = errorBody.substring(0, 150); 
+                        throw new Error(`API retornou status ${response.status}: ${response.statusText}. Detalhes: ${errorDetails}`);
                     }
                 } catch (error) {
-                    if (i === maxRetries - 1) throw error;
+                    if (i === maxRetries - 1) {
+                        console.error("Erro fatal após todas as tentativas.", error);
+                        throw error;
+                    }
+                    console.warn(`Tentativa ${i + 1} falhou com erro de rede. Tentando novamente em ${delay / 1000}s...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     delay *= 2;
                 }
             }
+            throw new Error("Falha na chamada da API após o máximo de tentativas.");
         }
 
-        async function simulatePrice() {
+        window.simulatePrice = async function() {
             const dollar = document.getElementById('dollarInput').value;
             const brent = document.getElementById('brentInput').value;
             const resultArea = document.getElementById('resultArea');
@@ -236,12 +446,15 @@
             const buttonText = document.getElementById('buttonText');
             const loadingIndicator = document.getElementById('loadingIndicator');
 
-            if (!dollar || !brent || isNaN(parseFloat(dollar)) || isNaN(parseFloat(brent))) {
-                geminiOutput.innerHTML = '<span class="text-red-600 font-bold">Por favor, insira valores válidos para Dólar e Petróleo Brent.</span>';
+            if (!dollar || !brent || isNaN(parseFloat(dollar)) || isNaN(parseInt(brent))) {
+                geminiOutput.innerHTML = '<span class="text-red-600 font-bold">Por favor, insira valores válidos.</span>';
                 resultArea.classList.remove('hidden');
                 return;
             }
-
+            
+            // 1. CALCULA O PREÇO DE FORMA DETERMINÍSTICA NO JAVASCRIPT (usando a nova calibração V3)
+            const estimatedPrice = calculateGasPrice(parseFloat(dollar), parseInt(brent));
+            
             // UI feedback: loading state
             simulateButton.disabled = true;
             buttonText.textContent = 'Simulando...';
@@ -251,16 +464,17 @@
             sourcesDiv.innerHTML = '';
 
             try {
-                const systemPrompt = "Aja como um analista financeiro brasileiro especializado em commodities e energia. Use a estrutura de composição de preço média apresentada (aprox. 41% impostos, 34% Petrobras/Refino, 15% Etanol, 10% Distribuição) para projetar o preço final da gasolina ao consumidor. Apresente uma estimativa clara do preço final formatada como **Gasolina Estimada: R$ X,XX/Litro** seguida pela justificativa econômica em um único parágrafo conciso. A justificativa deve citar explicitamente a influência do câmbio, do Brent e da carga tributária.";
+                // O Gemini agora JUSTIFICA este preço calculado:
+                const systemPrompt = "Aja como um analista financeiro brasileiro especializado em commodities e energia. Use a estrutura de composição de preço média (aprox. 41% impostos, 34% Petrobras/Refino, 15% Etanol, 10% Distribuição) para **justificar o preço final fornecido**. Apresente a estimativa clara do preço final formatada como **Gasolina Estimada: R$ X,XX/Litro** seguida pela justificativa econômica em um único parágrafo conciso. A justificativa deve citar explicitamente a influência do câmbio, do Brent e da carga tributária. Use a vírgula como separador decimal no preço.";
                 
-                const userQuery = `Simule o preço final da gasolina ao consumidor (R$/Litro) se o Dólar estivesse em R$${dollar} e o Petróleo Brent estivesse em $${brent}. Justifique sua estimativa com base na estrutura de custos brasileira e nas políticas fiscais atuais (PIS/Cofins, ICMS).`;
+                const userQuery = `O preço final da gasolina ao consumidor (R$/Litro) é de R$${estimatedPrice.toFixed(2).replace('.', ',')}. Justifique este preço, considerando que o Dólar está em R$${dollar} e o Petróleo Brent está em $${brent}. Use a estrutura de custos brasileira e as políticas fiscais atuais (PIS/Cofins, ICMS) para sua análise.`;
                 
                 const apiKey = "AIzaSyCd5-deATMmq45Jrgzhdi8vHEHHFhd51gs"; 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
                 const payload = {
                     contents: [{ parts: [{ text: userQuery }] }],
-                    tools: [{ "google_search": {} }], // Google Search Grounding para dados fiscais recentes
+                    tools: [{ "google_search": {} }], 
                     systemInstruction: {
                         parts: [{ text: systemPrompt }]
                     },
@@ -277,7 +491,6 @@
 
                 if (candidate && candidate.content?.parts?.[0]?.text) {
                     const text = candidate.content.parts[0].text;
-                    
                     let sources = [];
                     const groundingMetadata = candidate.groundingMetadata;
                     if (groundingMetadata && groundingMetadata.groundingAttributions) {
@@ -289,12 +502,18 @@
                             .filter(source => source.uri && source.title);
                     }
 
-                    // Display results
-                    geminiOutput.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<span class="text-xl font-extrabold text-[#BB3E03]">$1</span>');
+                    // 2. Exibe o resultado (usando o preço fixo calculado e a justificativa da IA)
+                    const fixedOutputText = text.replace(/Gasolina Estimada: R\$ [0-9,.]+?\/Litro/i, `Gasolina Estimada: R$ ${estimatedPrice.toFixed(2).replace('.', ',')}/Litro`);
                     
+                    geminiOutput.innerHTML = fixedOutputText.replace(/\*\*(.*?)\*\*/g, '<span class="text-xl font-extrabold text-[#BB3E03]">$1</span>');
                     if (sources.length > 0) {
                         sourcesDiv.innerHTML = 'Fontes de Dados (para grounding): ' + sources.map(s => `<a href="${s.uri}" target="_blank" class="underline hover:text-[#0A9396]">${s.title}</a>`).join(' | ');
+                    } else {
+                        sourcesDiv.innerHTML = 'Fontes de Dados (para grounding): Nenhuma fonte externa utilizada para esta análise.';
                     }
+                    
+                    // 3. Salva no Firestore
+                    await saveSimulationData(dollar, brent, fixedOutputText, sources);
                     
                 } else {
                     geminiOutput.innerHTML = '<span class="text-red-600 font-bold">Erro: Não foi possível obter a análise. Tente novamente.</span>';
@@ -312,9 +531,12 @@
             }
         }
 
-        // --- Chart Initialization (Existing code) ---
+        // --- Chart Initialization e Call to Firebase Init ---
         document.addEventListener('DOMContentLoaded', function () {
             
+            initFirebase(); // Inicia o Firebase e a autenticação
+
+            // Gráfico Histórico
             const labels = ['1980', '1985', '1990', '1994 (Real)', '1998', '2001', '2004', '2008', '2011', '2014', '2016', '2018', '2020', '2022', '2025'];
             const gasolinePrices = [2.50, 2.30, 2.10, 1.05, 1.85, 2.35, 2.50, 2.55, 2.70, 2.90, 3.67, 4.28, 4.40, 6.30, 5.85];
             const oilPrices = [37, 27, 20, 17, 14, 25, 38, 97, 111, 99, 45, 71, 42, 101, 88];
@@ -327,102 +549,22 @@
                 data: {
                     labels: labels,
                     datasets: [
-                        {
-                            label: 'Gasolina (R$ / Litro - Ajustado)',
-                            data: gasolinePrices,
-                            borderColor: '#005F73',
-                            backgroundColor: '#005F73',
-                            yAxisID: 'yBRL',
-                            tension: 0.3,
-                            borderWidth: 4
-                        },
-                        {
-                            label: 'Total Impostos (R$ / Litro)',
-                            data: taxPrices,
-                            borderColor: '#AE2012', 
-                            backgroundColor: '#AE2012',
-                            yAxisID: 'yBRL',
-                            tension: 0.3,
-                            borderWidth: 2,
-                            borderDash: [2, 2]
-                        },
-                        {
-                            label: 'Dólar (R$ / US$)',
-                            data: dollarRates,
-                            borderColor: '#94D2BD',
-                            backgroundColor: '#94D2BD',
-                            yAxisID: 'yBRL',
-                            tension: 0.3,
-                            borderWidth: 2,
-                            borderDash: [5, 5]
-                        },
-                        {
-                            label: 'Petróleo Brent ($ / Barril)',
-                            data: oilPrices,
-                            borderColor: '#EE9B00',
-                            backgroundColor: '#EE9B00',
-                            yAxisID: 'yUSD',
-                            tension: 0.3,
-                            borderWidth: 2
-                        }
+                        { label: 'Gasolina (R$ / Litro - Ajustado)', data: gasolinePrices, borderColor: '#005F73', backgroundColor: '#005F73', yAxisID: 'yBRL', tension: 0.3, borderWidth: 4 },
+                        { label: 'Total Impostos (R$ / Litro)', data: taxPrices, borderColor: '#AE2012', backgroundColor: '#AE2012', yAxisID: 'yBRL', tension: 0.3, borderWidth: 2, borderDash: [2, 2] },
+                        { label: 'Dólar (R$ / US$)', data: dollarRates, borderColor: '#94D2BD', backgroundColor: '#94D2BD', yAxisID: 'yBRL', tension: 0.3, borderWidth: 2, borderDash: [5, 5] },
+                        { label: 'Petróleo Brent ($ / Barril)', data: oilPrices, borderColor: '#EE9B00', backgroundColor: '#EE9B00', yAxisID: 'yUSD', tension: 0.3, borderWidth: 2 }
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
+                    responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
                     scales: {
-                        yBRL: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Valor em Reais (R$)'
-                            },
-                            grid: {
-                                drawOnChartArea: false, 
-                            },
-                            min: 0,
-                            max: 7 
-                        },
-                        yUSD: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Valor em Dólares ($)'
-                            },
-                            grid: {
-                                drawOnChartArea: true,
-                                color: '#E0E0E0'
-                            },
-                            min: 0,
-                            max: 120 
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                title: function(tooltipItems) {
-                                    const item = tooltipItems[0];
-                                    let label = item.chart.data.labels[item.dataIndex];
-                                    if (Array.isArray(label)) {
-                                      return label.join(' ');
-                                    } else {
-                                      return label;
-                                    }
-                                }
-                            }
-                        }
+                        yBRL: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Valor em Reais (R$)' }, grid: { drawOnChartArea: false }, min: 0, max: 7 },
+                        yUSD: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Valor em Dólares ($)' }, grid: { drawOnChartArea: true, color: '#E0E0E0' }, min: 0, max: 120 }
                     }
                 }
             });
             
+            // Gráfico de Composição
             const compositionCtx = document.getElementById('compositionChart').getContext('2d');
             new Chart(compositionCtx, {
                 type: 'doughnut',
@@ -437,30 +579,8 @@
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 15,
-                                padding: 15
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                title: function(tooltipItems) {
-                                    const item = tooltipItems[0];
-                                    let label = item.chart.data.labels[item.dataIndex];
-                                    if (Array.isArray(label)) {
-                                      return label.join(' ');
-                                    } else {
-                                      return label;
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 15, padding: 15 } } }
                 }
             });
 
