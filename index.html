@@ -233,8 +233,8 @@
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, onSnapshot, collection, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, orderBy, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis Globais para Firebase
         let app;
@@ -246,22 +246,12 @@
         // Constantes para caminhos do Firestore
         const SIMULATIONS_COLLECTION = 'gas_simulations'; 
 
-        // FUNÇÃO DETERMINÍSTICA CORRIGIDA (V3): Calibrada para refletir a alta carga tributária "por dentro"
+        // FUNÇÃO DETERMINÍSTICA CALIBRADA
         function calculateGasPrice(dollar, brent) {
-            // Constantes reais
             const litersPerBarrel = 159;
             const aggregateCostMultiplier = 2.67; 
-            // Multiplicador 2.67 é um proxy de calibração que absorve a margem de refino, etanol, 
-            // distribuição e a alta carga tributária (incluindo ICMS "por dentro") para replicar R$6.20 
-            // com as cotações atuais (Dólar R$5.35 e Brent $69).
-
-            // 1. Custo do Brent em Reais por Litro (Crude Cost)
             const crudeCostPerLiter = (brent / litersPerBarrel) * dollar; 
-            
-            // 2. Preço Final (Custo do Crude * Fator Agregado)
             const finalPrice = crudeCostPerLiter * aggregateCostMultiplier;
-
-            // Retorna o preço com duas casas decimais
             return parseFloat(finalPrice.toFixed(2));
         }
 
@@ -269,43 +259,47 @@
         async function initFirebase() {
             try {
                 // 1. Configuração e Inicialização
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                // As configurações do Firebase foram inseridas diretamente aqui.
+                const firebaseConfig = {
+                    apiKey: "AIzaSyBlqWsbSwUlXOvQfrcQLNYrZMBPFaUOwos",
+                    authDomain: "gasolina-8d5b1.firebaseapp.com",
+                    projectId: "gasolina-8d5b1",
+                    storageBucket: "gasolina-8d5b1.firebasestorage.app",
+                    messagingSenderId: "1084395544297",
+                    appId: "1:1084395544297:web:5d057ed8156107db16da78",
+                    measurementId: "G-125HLL4LH8"
+                };
 
-                if (Object.keys(firebaseConfig).length === 0) {
-                    console.error("Firebase config is missing.");
-                    return;
-                }
-                
+                appId = firebaseConfig.appId; // Garante que o appId global seja definido a partir da configuração
+
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
+                
+                // Adiciona log level para debug de permissões
+                setLogLevel('debug');
+                
                 auth = getAuth(app);
                 
                 const authStatusElement = document.getElementById('authStatus');
+                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                // 2. Autenticação Direta (Síncrona)
+                if (token) {
+                    await signInWithCustomToken(auth, token);
+                    userId = auth.currentUser.uid;
+                    authStatusElement.innerHTML = `Status: Autenticado. ID do Usuário: <span class="font-semibold">${userId.substring(0, 8)}...</span>`;
+                } else {
+                    const userCredential = await signInAnonymously(auth);
+                    userId = userCredential.user.uid;
+                    authStatusElement.innerHTML = `Status: Anônimo. ID do Usuário: <span class="font-semibold">${userId.substring(0, 8)}...</span>`;
+                }
                 
-                // 2. Autenticação
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        authStatusElement.innerHTML = `Status: Autenticado. ID do Usuário: <span class="font-semibold">${userId.substring(0, 8)}...</span>`;
-                        loadSimulations();
-                    } else {
-                        const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                        
-                        if (token) {
-                            await signInWithCustomToken(auth, token);
-                        } else {
-                            const userCredential = await signInAnonymously(auth);
-                            userId = userCredential.user.uid;
-                            authStatusElement.innerHTML = `Status: Anônimo. ID do Usuário: <span class="font-semibold">${userId.substring(0, 8)}...</span>`;
-                            loadSimulations();
-                        }
-                    }
-                });
+                // 3. Carrega Simulações APÓS a autenticação estar completa
+                loadSimulations();
 
             } catch (error) {
-                console.error("Erro na inicialização ou autenticação do Firebase:", error);
-                document.getElementById('authStatus').textContent = 'Erro ao conectar ao banco de dados.';
+                console.error("Erro fatal na inicialização ou autenticação do Firebase. O Project ID ainda pode estar faltando ou o token de autenticação está inválido.", error);
+                document.getElementById('authStatus').textContent = 'Erro fatal ao conectar. Recarregue a página.';
             }
         }
         
@@ -363,7 +357,12 @@
                 });
             }, (error) => {
                 console.error("Erro ao carregar simulações:", error);
-                listElement.innerHTML = `<p class="text-red-500">Erro ao carregar histórico.</p>`;
+                // Melhorando a mensagem de erro para o usuário final
+                let errorMessage = "Erro ao carregar histórico.";
+                if (error.message && (error.message.includes("permission") || error.message.includes("permissions"))) {
+                    errorMessage = "Erro de Permissão (Acesso Negado). Tente recarregar a página.";
+                }
+                listElement.innerHTML = `<p class="text-red-500">${errorMessage}</p>`;
             });
         }
 
@@ -452,7 +451,7 @@
                 return;
             }
             
-            // 1. CALCULA O PREÇO DE FORMA DETERMINÍSTICA NO JAVASCRIPT (usando a nova calibração V3)
+            // 1. CALCULA O PREÇO DE FORMA DETERMINÍSTICA NO JAVASCRIPT
             const estimatedPrice = calculateGasPrice(parseFloat(dollar), parseInt(brent));
             
             // UI feedback: loading state
@@ -469,52 +468,33 @@
                 
                 const userQuery = `O preço final da gasolina ao consumidor (R$/Litro) é de R$${estimatedPrice.toFixed(2).replace('.', ',')}. Justifique este preço, considerando que o Dólar está em R$${dollar} e o Petróleo Brent está em $${brent}. Use a estrutura de custos brasileira e as políticas fiscais atuais (PIS/Cofins, ICMS) para sua análise.`;
                 
-                const apiKey = "AIzaSyCd5-deATMmq45Jrgzhdi8vHEHHFhd51gs"; 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-                const payload = {
-                    contents: [{ parts: [{ text: userQuery }] }],
-                    tools: [{ "google_search": {} }], 
-                    systemInstruction: {
-                        parts: [{ text: systemPrompt }]
-                    },
-                };
-
-                const response = await exponentialBackoffFetch(apiUrl, {
+                // Chama o endpoint backend seguro (Vercel /api/analise) em vez de expor a API key
+                // Enviamos apenas os dados necessários: dollar, brent e estimatedPrice
+                const response = await exponentialBackoffFetch('/api/analise', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ dollar: parseFloat(dollar), brent: parseInt(brent), estimatedPrice })
                 });
 
                 const result = await response.json();
-                const candidate = result.candidates?.[0];
 
-                if (candidate && candidate.content?.parts?.[0]?.text) {
-                    const text = candidate.content.parts[0].text;
-                    let sources = [];
-                    const groundingMetadata = candidate.groundingMetadata;
-                    if (groundingMetadata && groundingMetadata.groundingAttributions) {
-                        sources = groundingMetadata.groundingAttributions
-                            .map(attribution => ({
-                                uri: attribution.web?.uri,
-                                title: attribution.web?.title,
-                            }))
-                            .filter(source => source.uri && source.title);
-                    }
+                // Esperamos que o backend retorne { analysis: string, sources?: Array }.
+                const analysisText = result.analysis;
+                const sources = result.sources || [];
 
-                    // 2. Exibe o resultado (usando o preço fixo calculado e a justificativa da IA)
-                    const fixedOutputText = text.replace(/Gasolina Estimada: R\$ [0-9,.]+?\/Litro/i, `Gasolina Estimada: R$ ${estimatedPrice.toFixed(2).replace('.', ',')}/Litro`);
-                    
+                if (analysisText && typeof analysisText === 'string') {
+                    // Substituímos a seção estimada (caso o backend não a tenha formatado)
+                    const fixedOutputText = analysisText.replace(/Gasolina Estimada: R\$ [0-9,.]+?\/Litro/i, `Gasolina Estimada: R$ ${estimatedPrice.toFixed(2).replace('.', ',')}/Litro`);
+
                     geminiOutput.innerHTML = fixedOutputText.replace(/\*\*(.*?)\*\*/g, '<span class="text-xl font-extrabold text-[#BB3E03]">$1</span>');
                     if (sources.length > 0) {
                         sourcesDiv.innerHTML = 'Fontes de Dados (para grounding): ' + sources.map(s => `<a href="${s.uri}" target="_blank" class="underline hover:text-[#0A9396]">${s.title}</a>`).join(' | ');
                     } else {
                         sourcesDiv.innerHTML = 'Fontes de Dados (para grounding): Nenhuma fonte externa utilizada para esta análise.';
                     }
-                    
-                    // 3. Salva no Firestore
+
+                    // Salva no Firestore
                     await saveSimulationData(dollar, brent, fixedOutputText, sources);
-                    
                 } else {
                     geminiOutput.innerHTML = '<span class="text-red-600 font-bold">Erro: Não foi possível obter a análise. Tente novamente.</span>';
                 }
